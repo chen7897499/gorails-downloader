@@ -1,5 +1,7 @@
 #!/usr/bin/ruby
 require "rss"
+require "eventmachine"
+require "mechanize"
 
 EMAIL    = ""
 PASSWORD = ""
@@ -29,10 +31,13 @@ puts "Downloading #{missing_filenames.size} missing videos"
 missing_videos_urls = videos_urls.select { |video_url| missing_filenames.any? { |filename| video_url[:url].match filename } }
 
 missing_videos_urls.each do |video_url|
-  filename = File.join("videos", video_url[:url].split('/').last)
-  puts "(#{video_url[:episode]}/#{videos_urls.last[:episode]}) Downloading '#{video_url[:title]}' (#{video_url[:size]}mb)"
-  `curl --progress-bar #{video_url[:url]} -o #{filename}.tmp`
-  `mv #{filename}.tmp #{filename}`
+  EM.run do
+    agent = Mechanize.new
+    filename = File.join("videos", video_url[:url].split('/').last)
+    puts "(#{video_url[:episode]}/#{videos_urls.last[:episode]}) Downloading '#{video_url[:title]}' (#{video_url[:size]}mb)"
+    agent.get(video_url[:url]).save video_url[:url].split('/').last
+    EM.stop
+  end
 end
 
 puts "Finished downloading #{missing_videos_urls.size} videos"
